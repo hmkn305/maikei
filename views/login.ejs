@@ -6,6 +6,9 @@
   </head>
 
   <body>
+
+    <%- include('header'); %>
+
     <div class="panel">
       <h2>ログイン</h2>
       <form action="/login" method="post">
@@ -14,7 +17,6 @@
         <p>パスワード</p>
         <input type="password" name="password">
         <input type="submit" value="ログイン">
-        <a href="#">一覧にもどる</a>
       </form>
     </div>
   </body>

@@ -1,10 +1,11 @@
 const express = require('express');
 const mysql = require('mysql');
 const app = express();
+const session = require('express-session');
+const bcrypt = require('bcrypt');
 
 app.use(express.static('public'));
 app.use(express.urlencoded({extended:true}));
-
 
 // mySQLの接続情報
 const connection = mysql.createConnection({
@@ -14,33 +15,40 @@ const connection = mysql.createConnection({
   database: 'NIKKEI'
 });
 
-// 接続できていない時にエラーを表示する
-connection.connect((err) => {
-  if (err) {
-    console.log('error connecting: ' + err.stack);
-    return;
+app.use(
+  session({
+    secret: 'my_secret_key',
+    resave: false,
+    saveUninitialized: false,
+  })
+);
+
+app.use((req, res, next) => {
+  const userId = req.session.userId;
+  if(req.session.userId === undefined){
+     res.locals.isLoggedIn = false;
+  }else{
+     res.locals.isLoggedIn = true;
   }
-  console.log('success');
+  next();
 });
 
-// '/'のルーティング
 app.get('/', (req, res) => {
-  connection.query(
-    'SELECT * FROM user',
-    (error, results) => {
-      console.log(results);
-      res.render('hello.ejs');
-    }
-  );
-});
-
-app.get('/top', (req, res) => {
   res.render('top.ejs');
 });
+
 
 app.get('/list',(req, res) => {
   res.render('list.ejs');
 });
+
+app.get('/header', (req, res) => {
+  res.render('header.ejs');
+});
+
+app.get('/contact', (req, res) => {
+  res.render('contact.ejs');
+}) 
 
 app.get('/company', (req, res) => {
   res.render('company.ejs');
@@ -51,49 +59,97 @@ app.get('/article',(req, res) => {
 });
 
 app.get('/register',(req, res) => {
-  res.render('register.ejs');
+  res.render('register.ejs', {errors: []});
 });
 
 app.get('/login',(req, res) => {
-  // ログイン画面表示
-  res.render('login.ejs', {errors : []});
+  res.render('login.ejs');
 });
 
-app.post('/login',(req, res) => {
-　// ユーザー認証
-  const email = req.body.email;
+app.get('/logout', (req, res) => {
+  req.session.destroy((error) => {
+  res.redirect('/list');
+  });
+});
 
+app.post('/register', 
+(req, res, next) => {
+   const email = req.body.email;
+   const password = req.body.password;
+   const errors = [];
+
+  if(email === ''){
+   errors.push('メールアドレスが空です');
+  }
+
+  if(password === ''){
+   errors.push('パスワードが空です');
+  }
+  
+  if(errors.length > 0){
+    res.render('register.ejs', { errors: errors});
+  }else{
+    next();
+  }
+　},
+(req, res, next) => {
+  const email = req.body.email;
+  const errors = [];
   connection.query(
     'SELECT * FROM user WHERE email = ?',
     [email],
     (error, results) => {
       if(results.length > 0){
-         if(req.body.password === results[0].password){
-           console.log('認証に成功しました');
-           res.redirect('/list');
-         }
+        errors.push('ユーザー登録に失敗しました');
+        res.render('register.ejs',{errors: errors});
       }else{
-        console.log('認証に失敗しました');
-        res.redirect('/login');
+        next();
       }
     }
   );
-  
-});
-
-app.post('/register', (req, res) => {
-  console.log('ユーザー登録');
+},
+(req, res) => {
   const email = req.body.email;
   const password = req.body.password;
-　
-  connection.query(
-    'INSERT INTO user (email, password) VALUES(?, ?)',
-    [email, password],
-    (error, results) => {
-      res.redirect('/list');
-    }
-  );
-
-});
+  bcrypt.hash(password, 10, (error, hash) => {
+    connection.query(
+      'INSERT INTO user(email, password) VALUES(?,?)',
+      [email, hash],
+      (error, results) => {
+        req.session.userId = results.insertId;
+        res.redirect('/list');
+      }
+    );
+  });
+}
+  
+);
+  
+app.post('/login',(req, res) => {
+  　// ユーザー認証
+    const email = req.body.email;
+  
+    connection.query(
+      'SELECT * FROM user WHERE email = ?',
+      [email],
+      (error, results) => {
+        if(results.length > 0){
+          const plain = req.body.password;
+          const hash = results[0].password;
+          bcrypt.compare(plain, hash, (error, isEqual) => {
+           if(isEqual){
+             req.session.userId = results.insertId;
+             res.redirect('/list');
+            }else{
+             res.render('login.ejs');
+            }
+          });
+        }else{
+          res.redirect('/login');
+        }
+      }
+    );
+    
+  });
 
 app.listen(3000);
