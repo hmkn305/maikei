@@ -38,8 +38,13 @@ app.get('/', (req, res) => {
 });
 
 
-app.get('/list',(req, res) => {
-  res.render('list.ejs');
+app.get('/list', (req, res) => {
+  connection.query(
+    'SELECT * FROM articles' ,
+    (error, results) => {
+    res.render('list.ejs', { articles: results});
+    }
+  );
 });
 
 app.get('/header', (req, res) => {
@@ -54,8 +59,15 @@ app.get('/company', (req, res) => {
   res.render('company.ejs');
 });
 
-app.get('/article',(req, res) => {
-  res.render('article.ejs');
+app.get('/article/:id',(req, res) => {
+  const id = req.params.id;
+  connection.query(
+    'SELECT * FROM articles WHERE id = ?' ,
+    [id],
+    (error, results) => {
+      res.render('article.ejs', {articles: results[0]});
+    }
+  );
 });
 
 app.get('/register',(req, res) => {
@@ -74,6 +86,7 @@ app.get('/logout', (req, res) => {
 
 app.post('/register', 
 (req, res, next) => {
+  // 入力値のからチェック
    const email = req.body.email;
    const password = req.body.password;
    const errors = [];
@@ -93,6 +106,7 @@ app.post('/register',
   }
 　},
 (req, res, next) => {
+  // メールアドレスの重複チェック
   const email = req.body.email;
   const errors = [];
   connection.query(
@@ -109,6 +123,7 @@ app.post('/register',
   );
 },
 (req, res) => {
+  // ユーザー登録
   const email = req.body.email;
   const password = req.body.password;
   bcrypt.hash(password, 10, (error, hash) => {
@@ -124,10 +139,14 @@ app.post('/register',
 }
   
 );
+
+
   
 app.post('/login',(req, res) => {
   　// ユーザー認証
     const email = req.body.email;
+
+    debugger;
   
     connection.query(
       'SELECT * FROM user WHERE email = ?',
@@ -138,9 +157,12 @@ app.post('/login',(req, res) => {
           const hash = results[0].password;
           bcrypt.compare(plain, hash, (error, isEqual) => {
            if(isEqual){
-             req.session.userId = results.insertId;
+             debugger;
+             req.session.userId = results[0].id;
+             console.log('ログイン成功！');
              res.redirect('/list');
             }else{
+              console.log('ログイン失敗');
              res.render('login.ejs');
             }
           });
