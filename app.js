@@ -65,7 +65,7 @@ app.get('/article/:id',(req, res) => {
     'SELECT * FROM articles WHERE id = ?' ,
     [id],
     (error, results) => {
-      res.render('article.ejs', {articles: results[0]});
+      res.render('article.ejs', {article: results[0]});
     }
   );
 });

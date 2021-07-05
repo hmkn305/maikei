@@ -3,6 +3,8 @@
   <head>
     <meta charset="utf-8">
     <title>Article Page</title>
+    <link rel="stylesheet"
+          href="/css/style.css">
     <script src="/send_url.js"></script>
   </head>
   <body>
@@ -11,7 +13,7 @@
     
   <main>
 
-    <div class = "article">
+    <div class = "article">        
      <% if (article.category === 'all') { %>
       <h1><%= article.title %></h1>
       <p><%= article.content %></p>
@@ -30,7 +32,6 @@
         </div>
       <% } %>
       <% } %>
-
     </div>
   </main>
   <footer>
